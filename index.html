@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accessible Chat Bot</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            background-color: #f0f0f0;
+        }
+        #chat-container {
+            width: 400px;
+            background: white;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+        #messages {
+            padding: 10px;
+            height: 300px;
+            overflow-y: scroll;
+            border-bottom: 1px solid #ddd;
+        }
+        .message {
+            margin: 10px 0;
+        }
+        .message.user {
+            text-align: right;
+        }
+        #input-container {
+            display: flex;
+            padding: 10px;
+            border-top: 1px solid #ddd;
+        }
+        #input-container input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            margin-right: 10px;
+        }
+        #input-container button {
+            padding: 10px;
+            border: none;
+            background: #007bff;
+            color: white;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        #input-container button:hover {
+            background: #0056b3;
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <div id="chat-container" role="region" aria-label="Chatbot">
+        <div id="messages" role="log" aria-live="polite" aria-relevant="additions text"></div>
+        <div id="input-container">
+            <input type="text" id="message-input" placeholder="Type your message here..." aria-label="Type your message">
+            <button onclick="sendMessage()" aria-label="Send message">Send</button>
+        </div>
+    </div>
+
+    <script>
+        const apiURL = "https://chat-gpt.hazex.workers.dev/";
+
+        function getData(key) {
+            return JSON.parse(localStorage.getItem(key));
+        }
+
+        function saveData(key, data) {
+            localStorage.setItem(key, JSON.stringify(data));
+        }
+
+        function appendMessage(text, sender) {
+            const messagesDiv = document.getElementById('messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.classList.add('message', sender);
+            messageDiv.textContent = text;
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function initializeChat() {
+            const initialScenario = "Hello! I am Blind Tech Agent AI, developed by Pawan Kumar. How can I assist you today? You can ask about order status, return policy, or any other questions. I will use simple words to explain.";
+            appendMessage(initialScenario, 'bot');
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('message-input');
+            const userMessage = input.value.trim();
+            if (!userMessage) return;
+
+            appendMessage(userMessage, 'user');
+            input.value = '';
+
+            let lastResponse = getData("GptMsg");
+            if (!lastResponse) {
+                lastResponse = [];
+            }
+
+            const data = {
+                gpt: lastResponse,
+                user: userMessage
+            };
+
+            axios.post(apiURL, data)
+                .then(response => {
+                    if (response.status === 200) {
+                        const ans = response.data.answer;
+                        appendMessage(ans, 'bot');
+
+                        lastResponse.push(userMessage + " - " + ans);
+                        if (lastResponse.length > 8) {
+                            lastResponse.shift();
+                        }
+                        saveData("GptMsg", lastResponse);
+                    } else {
+                        console.error("Error response from server:", response);
+                        appendMessage("Error: " + response.data, 'bot');
+                    }
+                })
+                .catch(error => {
+                    console.error("Error posting data:", error);
+                    appendMessage("An error occurred while processing your request.", 'bot');
+                });
+        }
+
+        // Initialize chat with scenario
+        document.addEventListener('DOMContentLoaded', initializeChat);
+    </script>
+</body>
+</html>
